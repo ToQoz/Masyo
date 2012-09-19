@@ -48,8 +48,12 @@ module Masyo
           begin
             input = client.recv_nonblock(1000)
           rescue IO::WaitReadable
-            IO.select([ client ])
-            retry
+            if IO.select([ client ], nil, nil, 10)
+              retry
+            else
+              # timeout!
+              break
+            end
           rescue
             input = ""
           else
