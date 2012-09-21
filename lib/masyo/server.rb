@@ -1,20 +1,36 @@
+# -*- coding: utf-8 -*-
+
+require 'socket'
+require 'masyo/event'
+
 module Masyo
   class Server
     attr_accessor :tcp_server
+    CLIENT_SOCKET_TIMEOUT = 3
 
-    def self.open(*args)
-      port = args.first
-      raise ArgumentError, "wrong number of arguments (#{args.size} for 1..2)" if args.size <= 0
-      raise ArgumentError, "#{port} is not a Integer" unless port.is_a? Integer
+    class << self
+      def event_types
+        [ :read, :close ]
+      end
 
-      server = new(port)
-      return server unless block_given?
-      begin
-        yield server
-      ensure
-        server.close
+      def open(*args)
+        port = args.first
+        raise ArgumentError, "wrong number of arguments (#{args.size} for 1..2)" if args.size <= 0
+        raise ArgumentError, "#{port} is not a Integer" unless port.is_a? Integer
+
+        server = new(port)
+        return server unless block_given?
+        begin
+          yield server
+        ensure
+          # for sending buffer to server before socket close.
+          server.trigger_event :close
+          server.close unless server.closed?
+        end
       end
     end
+
+    include Event
 
     def initialize(port)
       @tcp_server = TCPServer.new(port)
@@ -23,78 +39,47 @@ module Masyo
     def post(msg)
       Masyo.logger.info msg
 
-      Thread.start do
-        TCPSocket.open(Masyo.target_host, Masyo.target_port) { |socket|
-          Masyo.logger.info "Succeed TCPSocket.open. `#{Masyo.target_host}:#{Masyo.target_port}`"
+      TCPSocket.open(Masyo.target_host, Masyo.target_port) { |socket|
+        Masyo.logger.info "Succeed TCPSocket.open. `#{Masyo.target_host}:#{Masyo.target_port}`"
 
-          socket.puts msg
-          socket.close
-        } rescue Masyo.logger.error "Failed TCPSocket.open. `#{Masyo.target_host}:#{Masyo.target_port}`"
-      end
+        socket.puts msg
+      } rescue Masyo.logger.error "Failed TCPSocket.open. `#{Masyo.target_host}:#{Masyo.target_port}`"
     end
 
     def awake
       loop {
-        client = client!
-        client.fcntl(Fcntl::F_SETFL, client.fcntl(Fcntl::F_GETFL) | Fcntl::O_NONBLOCK)
-
-        handle_client client
+        Thread.start(tcp_server.accept) do |c|
+          handle_client c
+        end
       }
     end
 
     def handle_client(client)
-      Thread.fork(client) do |c|
+      begin
         loop {
           begin
-            input = client.recv_nonblock(1000)
+            input = client.recv_nonblock(Masyo.buffer_size > 1000 ? Masyo.buffer_size : 1000)
           rescue IO::WaitReadable
-            if IO.select([ client ], nil, nil, 10)
+            if IO.select([ client ], nil, nil, CLIENT_SOCKET_TIMEOUT)
               retry
             else
               # timeout!
               break
             end
-          rescue
-            input = ""
           else
-            break if input == "" || input == "quit"
+            break if !input || input == "" || input == "quit"
 
-            trigger_event :on_read, input
+            trigger_event :read, input
           end
         }
-        client.close
+      ensure
+        linger = [1,0].pack('ii')
+        client.setsockopt(Socket::SOL_SOCKET, Socket::SO_LINGER, linger)
+        client.close unless client.closed?
       end
     end
 
-    ##
-    # events
-    ##
-    def events
-      @events ||= {}
-    end
-
-    def trigger_event(event_name, *arg)
-      if events[event_name]
-        events[event_name].each do |f|
-          f.call *arg
-        end
-      end
-    end
-
-    def on_read(&handler)
-      events[:on_read] ||= []
-      events[:on_read] << handler
-    end
-
-    ##
-    # delegate to TCPServer instance
-    ##
-    def client!
-      tcp_server.accept
-    end
-
-    def close
-      tcp_server.close
-    end
+    extend Forwardable
+    def_delegators :tcp_server, :close, :closed?
   end
 end
