@@ -74,8 +74,9 @@ describe Masyo::Server do
     end
 
     it 'should call Logger#info. with given msg.' do
-      msg = "hoge"
-      logger.should_receive(:info).with(msg)
+      msg = "posted message"
+
+      logger.should_receive(:info).once.with(msg)
       instance.post msg
     end
 
@@ -84,7 +85,7 @@ describe Masyo::Server do
         TCPSocket.stub(:open).and_raise
         msg = "posted message"
 
-        logger.should_receive(:error).with("Failed TCPSocket.open. `#{Masyo.target_host}:#{Masyo.target_port}`")
+        logger.should_receive(:error).once
         instance.post msg
       end
     end
@@ -95,7 +96,7 @@ describe Masyo::Server do
         TCPSocket.stub(:open) { |&block| block.yield socket }
         msg = "posted message"
 
-        logger.should_receive(:info).with(msg).with("Succeed TCPSocket.open. `#{Masyo.target_host}:#{Masyo.target_port}`")
+        logger.should_receive(:info).twice
         instance.post msg
       end
     end
