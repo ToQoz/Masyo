@@ -14,11 +14,9 @@ module Masyo
       end
 
       def open(*args)
-        port = args.first
-        raise ArgumentError, "wrong number of arguments (#{args.size} for 1..2)" if args.size <= 0
-        raise ArgumentError, "#{port} is not a Integer" unless port.is_a? Integer
+        raise ArgumentError, "wrong number of arguments (#{args.size} for 1..2)" if args.size == 0 || args.size >= 3
 
-        server = new(port)
+        server = new(args.first)
         return server unless block_given?
         begin
           yield server
@@ -33,13 +31,14 @@ module Masyo
     include Event
 
     def initialize(port)
-      @tcp_server = TCPServer.new(port)
+      raise ArgumentError, "#{port} is not a Integer" unless port.is_a? Integer
+      @tcp_server = ::TCPServer.new(port)
     end
 
     def post(msg)
-      Masyo.logger.info msg
+      ::Masyo.logger.info msg
 
-      TCPSocket.open(Masyo.target_host, Masyo.target_port) { |socket|
+      ::TCPSocket.open(Masyo.target_host, Masyo.target_port) { |socket|
         Masyo.logger.info "Succeed TCPSocket.open. `#{Masyo.target_host}:#{Masyo.target_port}`"
 
         socket.puts msg
@@ -48,19 +47,19 @@ module Masyo
 
     def awake
       loop {
-        Thread.start(tcp_server.accept) do |c|
-          handle_client c
+        Thread.start(tcp_server.accept) do |socket|
+          handle_socket socket
         end
       }
     end
 
-    def handle_client(client)
+    def handle_socket(socket)
       begin
         loop {
           begin
-            input = client.recv_nonblock(Masyo.buffer_size > 1000 ? Masyo.buffer_size : 1000)
-          rescue IO::WaitReadable
-            if IO.select([ client ], nil, nil, CLIENT_SOCKET_TIMEOUT)
+            input = socket.recv_nonblock(Masyo.buffer_size > 1000 ? Masyo.buffer_size : 1000)
+          rescue ::IO::WaitReadable
+            if ::IO.select([ socket ], nil, nil, CLIENT_SOCKET_TIMEOUT)
               retry
             else
               # timeout!
@@ -74,12 +73,12 @@ module Masyo
         }
       ensure
         linger = [1,0].pack('ii')
-        client.setsockopt(Socket::SOL_SOCKET, Socket::SO_LINGER, linger)
-        client.close unless client.closed?
+        socket.setsockopt(::Socket::SOL_SOCKET, ::Socket::SO_LINGER, linger)
+        socket.close unless socket.closed?
       end
     end
 
-    extend Forwardable
+    extend ::Forwardable
     def_delegators :tcp_server, :close, :closed?
   end
 end
