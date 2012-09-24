@@ -4,22 +4,22 @@ module Masyo
   class BufferOverflowException < StandardError; end
 
   class Buffer
-    attr_accessor :maxlen
+    attr_accessor :maxlen, :buffer
 
-    def initialize(maxlen)
+    def initialize(maxlen = 0)
       @maxlen = maxlen
       @buffer = ""
     end
 
     def take!
-      b = @buffer
+      b = buffer
       clear!
       b
     end
 
     def push(str)
-      if @buffer.bytesize + str.bytesize < @maxlen
-        @buffer += str
+      if buffer.bytesize + str.bytesize <= maxlen
+        self.buffer += str
       else
         raise BufferOverflowException
       end
@@ -27,7 +27,7 @@ module Masyo
     alias_method :<<, :push
 
     def clear!
-      @buffer = ""
+      self.buffer = ""
     end
   end
 end

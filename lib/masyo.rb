@@ -45,10 +45,9 @@ module Masyo
   end
 
   def configure(opts)
-    self.target_host = opts[:target_host]
-    self.target_port = opts[:target_port]
-    self.buffer_size = opts[:buffer_size]
-    self.port = opts[:port]
+    opts.each_pair  do |o_key, o_value|
+      self.send("#{o_key}=", o_value) if self.respond_to?("#{o_key}=")
+    end
   end
 
   def buffer
