@@ -3,6 +3,17 @@
 require 'spec_helper'
 
 describe Masyo::Server do
+  let (:instance) { Masyo::Server.new(8183) }
+  before(:each) do
+    Masyo.stub(:target_port).and_return(1234)
+    Masyo.stub(:target_host).and_return("0.0.0.0")
+    Masyo.stub(:logger).and_return(logger)
+    Masyo.stub(:buffer_size).and_return(100)
+  end
+  after(:each) do
+    instance.close
+  end
+
   describe '.open' do
     context 'when given over 2 args' do
       it 'should recieve ArgumentError' do
@@ -18,22 +29,12 @@ describe Masyo::Server do
 
   describe '#initialize' do
     it 'store ::TCPServer as instance variable' do
-      instance = Masyo::Server.new(8183)
       instance.tcp_server.is_a?(::TCPServer).should be_true
-      instance.close
     end
   end
 
   describe '#handle_client' do
-    before(:all) do
-      Masyo.stub(:buffer_size).and_return(100)
-    end
-    after(:all) do
-      instance.close
-    end
-
     let (:socket) { double(close: true, closed?: false, setsockopt: true ) }
-    let (:instance) { Masyo::Server.new(8183) }
 
     context 'when raise IO::WaitReadable' do
       context 'when before timeout' do
@@ -60,31 +61,14 @@ describe Masyo::Server do
   end
 
   describe '#post' do
-    let (:instance) { Masyo::Server.new(8183) }
     let (:logger) { double(info: true, error: true) }
-
-    before(:each) do
-      Masyo.stub(:target_port).and_return(1234)
-      Masyo.stub(:target_host).and_return("0.0.0.0")
-      Masyo.stub(:logger).and_return(logger)
-    end
-
-    after(:each) do
-      instance.close
-    end
-
-    it 'should call Logger#info. with given msg.' do
-      msg = "posted message"
-
-      logger.should_receive(:info).once.with(msg)
-      instance.post msg
-    end
 
     context 'when fail' do
       it 'should call Logger#error' do
         TCPSocket.stub(:open).and_raise
         msg = "posted message"
 
+        logger.should_receive(:info).once.with(msg)
         logger.should_receive(:error).once
         instance.post msg
       end
@@ -96,7 +80,8 @@ describe Masyo::Server do
         TCPSocket.stub(:open) { |&block| block.yield socket }
         msg = "posted message"
 
-        logger.should_receive(:info).twice
+        logger.should_receive(:info).once.with(msg)
+        logger.should_receive(:info).once
         instance.post msg
       end
     end
