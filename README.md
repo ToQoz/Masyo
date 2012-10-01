@@ -8,5 +8,5 @@ Casual TCP Proxy
 ```sh
 $ cd /path-to-masyo
 $ bundle install --path=vendor/bundles
-$ bundle exec ruby bin/masyo -p #{LISTEN_PORT} --target_host #{PROXY_TARGET_HOST} --target_port #{PROXY_TARGET_PORT}
+$ bundle exec ruby bin/masyo -listen_port #{LISTEN_PORT} --server_host #{PROXY_TARGET_HOST} --server_port #{PROXY_TARGET_PORT}
 ```
