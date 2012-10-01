@@ -3,58 +3,39 @@
 require 'logger'
 
 require 'masyo/server'
+require 'masyo/client'
 require 'masyo/buffer'
 
 module Masyo
   extend self
 
-  attr_accessor :target_host, :target_port, :port, :buffer_size, :server
-
-  def run(opts)
-    configure opts
+  def run(opts = {})
+    opts = {
+      listen_port: 2000,
+      server_host: "0.0.0.0",
+      server_port: 24224 ,
+      buffer_size: 0
+    }.merge(opts)
     Thread.abort_on_exception = true
 
-    Server.open(port) do |server|
-      logger.info "listen #{port} port."
+    buffer = Buffer.new opts[:buffer_size]
+    client = Client.new(opts[:server_host], opts[:server_port], buffer)
+    Server.open(opts[:listen_port]) do |server|
+      logger.info "listen #{opts[:listen_port]} port."
 
       server.on_read do |msg|
-        if buffer_size <= 0
-          server.post msg
-        else
-          begin
-            buffer << msg
-          rescue BufferOverflowException
-            # clear buffer
-            server.post buffer.take!
-            begin
-              buffer << msg
-            rescue BufferOverflowException
-              # post without using buffer
-              server.post msg
-            end
-          end
-        end
+        client.post msg
       end
 
       server.on_close {
-        server.post buffer.take!
+        client.post buffer.take!
       }
 
-      server.awake
+      server.start
     end
-  end
-
-  def configure(opts)
-    opts.each_pair  do |o_key, o_value|
-      self.send("#{o_key}=", o_value) if self.respond_to?("#{o_key}=")
-    end
-  end
-
-  def buffer
-    @buffer ||= Buffer.new buffer_size
   end
 
   def logger
-    @logger ||= Logger.new(STDOUT)
+    @logger ||= Logger.new STDOUT
   end
 end

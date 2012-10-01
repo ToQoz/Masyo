@@ -5,10 +5,10 @@ require "slop"
 argv = ARGV.dup
 slop = Slop.new(:strict => true, :help => true)
 slop.banner "$ bundle exec ruby bin/masyo [options]\n"
-slop.on :p, :port=, "listen port (default is 2000)"
 slop.on :b, :buffer_size=, "buffer byte size(default is 0)"
-slop.on :target_host=, "target server host (default is \"0.0.0.0\")"
-slop.on :target_port=, "target server port (default is 24224)"
+slop.on :listen_port=, "listen port (default is 2000)"
+slop.on :server_host=, "target server host (default is \"0.0.0.0\")"
+slop.on :server_port=, "target server port (default is 24224)"
 
 begin
   slop.parse!(argv)
@@ -20,8 +20,8 @@ options = slop.to_hash
 unless options[:help]
   options.delete(:help)
   options[:port] = (options[:port] || 2000).to_i
-  options[:target_host] ||= "0.0.0.0"
-  options[:target_port] = (options[:target_port] || 24224).to_i
+  options[:server_host] ||= "0.0.0.0"
+  options[:server_port] = (options[:server_port] || 24224).to_i
   options[:buffer_size] = (options[:buffer_size] || 0).to_i
 
   root = File.expand_path("../..", __FILE__)

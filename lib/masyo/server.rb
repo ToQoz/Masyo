@@ -5,8 +5,8 @@ require 'masyo/event'
 
 module Masyo
   class Server
-    attr_accessor :tcp_server
-    CLIENT_SOCKET_TIMEOUT = 3
+    attr_accessor :tcp_server, :socket_to_client
+    TO_CLIENT_SOCKET_TIMEOUT = 3
 
     class << self
       def event_types
@@ -14,7 +14,7 @@ module Masyo
       end
 
       def open(*args)
-        raise ArgumentError, "wrong number of arguments (#{args.size} for 1..2)" if args.size == 0 || args.size >= 3
+        raise ArgumentError, "wrong number of arguments (#{args.size} for 1..2)" if args.size <= 0 || args.size >= 2
 
         server = new(args.first)
         return server unless block_given?
@@ -35,31 +35,21 @@ module Masyo
       @tcp_server = ::TCPServer.new(port)
     end
 
-    def post(msg)
-      ::Masyo.logger.info msg
-
-      ::TCPSocket.open(Masyo.target_host, Masyo.target_port) { |socket|
-        Masyo.logger.info "Succeed TCPSocket.open. `#{Masyo.target_host}:#{Masyo.target_port}`"
-
-        socket.puts msg
-      } rescue Masyo.logger.error "Failed TCPSocket.open. `#{Masyo.target_host}:#{Masyo.target_port}`"
-    end
-
-    def awake
+    def start
       loop {
-        Thread.start(tcp_server.accept) do |socket|
-          handle_socket socket
+        Thread.start(tcp_server.accept) do |to_client|
+          handle_request to_client
         end
       }
     end
 
-    def handle_socket(socket)
+    def handle_request(to_client)
       begin
         loop {
           begin
-            input = socket.recv_nonblock(Masyo.buffer_size > 1000 ? Masyo.buffer_size : 1000)
+            input = to_client.recv_nonblock(2048)
           rescue ::IO::WaitReadable
-            if ::IO.select([ socket ], nil, nil, CLIENT_SOCKET_TIMEOUT)
+            if ::IO.select([ to_client ], nil, nil, TO_CLIENT_SOCKET_TIMEOUT)
               retry
             else
               # timeout!
@@ -72,13 +62,19 @@ module Masyo
           end
         }
       ensure
-        linger = [1,0].pack('ii')
-        socket.setsockopt(::Socket::SOL_SOCKET, ::Socket::SO_LINGER, linger)
-        socket.close unless socket.closed?
+        to_client.close_immediately unless to_client.closed?
       end
     end
 
     extend ::Forwardable
     def_delegators :tcp_server, :close, :closed?
+    def_delegators :Masyo, :logger
+  end
+
+  class ::TCPSocket
+    def close_immediately
+      setsockopt(::Socket::SOL_SOCKET, ::Socket::SO_LINGER, [1,0].pack('ii'))
+      close
+    end
   end
 end
