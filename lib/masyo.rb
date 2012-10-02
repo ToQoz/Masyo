@@ -5,6 +5,7 @@ require 'logger'
 require 'masyo/server'
 require 'masyo/client'
 require 'masyo/buffer'
+require 'extentions/tcp_socket'
 
 module Masyo
   extend self

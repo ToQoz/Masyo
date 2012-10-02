@@ -70,11 +70,4 @@ module Masyo
     def_delegators :tcp_server, :close, :closed?
     def_delegators :Masyo, :logger
   end
-
-  class ::TCPSocket
-    def close_immediately
-      setsockopt(::Socket::SOL_SOCKET, ::Socket::SO_LINGER, [1,0].pack('ii'))
-      close
-    end
-  end
 end
