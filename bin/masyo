@@ -19,7 +19,7 @@ end
 options = slop.to_hash
 unless options[:help]
   options.delete(:help)
-  options[:port] = (options[:port] || 2000).to_i
+  options[:listen_port] = (options[:listen_port] || 2000).to_i
   options[:server_host] ||= "0.0.0.0"
   options[:server_port] = (options[:server_port] || 24224).to_i
   options[:buffer_size] = (options[:buffer_size] || 0).to_i
