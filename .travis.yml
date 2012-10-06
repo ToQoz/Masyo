@@ -1,0 +1,13 @@
+language: ruby
+rvm:
+  - 1.9.3
+
+script:
+  - RAILS_ENV=test bundle exec rspec spec
+
+notifications:
+  email:
+    recipients:
+      - toqoz403@gmail.com
+    on_success: change
+    on_failure: always
