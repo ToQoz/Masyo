@@ -1,3 +1,9 @@
+PATH
+  remote: .
+  specs:
+    masyo (0.0.1)
+      slop
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -22,6 +28,6 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  masyo!
   pry
   rspec
-  slop

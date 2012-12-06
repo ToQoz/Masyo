@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 require 'logger'
+require 'forwardable'
 
+require 'masyo/version'
 require 'masyo/server'
 require 'masyo/client'
 require 'masyo/buffer'
