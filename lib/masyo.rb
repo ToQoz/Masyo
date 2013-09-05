@@ -4,38 +4,15 @@ require 'logger'
 require 'forwardable'
 
 require 'masyo/version'
-require 'masyo/server'
-require 'masyo/client'
-require 'masyo/buffer'
+require 'masyo/proxy'
 require 'extentions/tcp_socket'
 
 module Masyo
   extend self
 
   def run(opts = {})
-    opts = {
-      listen_port: 2000,
-      server_host: "0.0.0.0",
-      server_port: 24224 ,
-      buffer_size: 0
-    }.merge(opts)
     Thread.abort_on_exception = true
-
-    buffer = Buffer.new opts[:buffer_size]
-    client = Client.new(opts[:server_host], opts[:server_port], buffer)
-    Server.open(opts[:listen_port]) do |server|
-      logger.info "listen #{opts[:listen_port]} port."
-
-      server.on_read do |msg|
-        client.post msg
-      end
-
-      server.on_close {
-        client.post buffer.take!
-      }
-
-      server.start
-    end
+    Proxy.run(opts[:listen_port], opts[:server_host], opts[:server_port])
   end
 
   def logger

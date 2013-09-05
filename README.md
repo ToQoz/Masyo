@@ -3,9 +3,14 @@
 ## Description
 Casual TCP Proxy
 
-## Usage
+## Install
 
 ```sh
 $ gem install masyo
-$ masyo --listen_port LISTEN_PORT --server_host PROXY_TARGET_HOST --server_port PROXY_TARGET_PORT
+```
+
+## Usage
+
+```sh
+$ masyo -h
 ```
